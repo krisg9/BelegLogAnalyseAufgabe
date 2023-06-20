@@ -3,6 +3,8 @@ package loganalyse
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 
+import java.time.OffsetDateTime
+
 object LogAnalyseFuns {
 
   def getParsedData(data: RDD[String]): (RDD[(Row, Int)], RDD[Row], RDD[Row]) = {
@@ -91,13 +93,23 @@ object LogAnalyseFuns {
    * accesses as the second.
    * The list should be ordered by the day number.
    */
-  def getNumberOfRequestsPerDay(data: RDD[Row]): List[(Int, Int)] = ???
+  def getNumberOfRequestsPerDay(data: RDD[Row]): List[(Int, Int)] = {
+    data.map(x => (x.get(3).asInstanceOf[OffsetDateTime].getDayOfMonth, 1))
+      .aggregateByKey(0)(_ + _, _ + _)
+      .sortByKey()
+      .collect()
+      .toList
+  }
 
   /*
-   * Calculate the number of hosts that accesses the web server in June 95.
+   * Calculate the number of hosts that accesses the web server in July 95.
    * Every hosts should only be counted once.
    */
-  def numberOfUniqueHosts(data: RDD[Row]): Long = ???
+  def numberOfUniqueHosts(data: RDD[Row]): Long = {
+    data.map(x => x.getString(0))
+      .groupBy(x => x)
+      .count()
+  }
 
   /*
   * Calculate the number of hosts per day that accesses the web server.
