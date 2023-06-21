@@ -116,7 +116,14 @@ object LogAnalyseFuns {
   * Every host should only be counted once per day.
   * Order the list by the day number.
   */
-  def numberOfUniqueDailyHosts(data: RDD[Row]): List[(Int, Int)] = ???
+  def numberOfUniqueDailyHosts(data: RDD[Row]): List[(Int, Int)] = {
+    data.map(row => (row.get(3).asInstanceOf[OffsetDateTime].getDayOfMonth, row.getString(0)))
+      .distinct()
+      .map(x => (x._1, 1))
+      .reduceByKey(_ + _)
+      .collect()
+      .toList
+  }
 
   /*
    * Calculate the average number of requests per host for each single day.
