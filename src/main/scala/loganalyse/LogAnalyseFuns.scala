@@ -38,7 +38,10 @@ object LogAnalyseFuns {
    */
   def getResponseCodesAndFrequencies(data: RDD[Row]): List[(Int, Int)] = {
     val codes: RDD[Int] = data.map(row => row.getInt(7))
-    codes.map(x => (x, 1)).reduceByKey((x, y) => x + y).collect().toList
+    codes.map(x => (x, 1))
+      .reduceByKey((x, y) => x + y)
+      .collect()
+      .toList
   }
 
   /*
@@ -130,12 +133,21 @@ object LogAnalyseFuns {
    * Order the list by the day number.
    */
   def averageNrOfDailyRequestsPerHost(data: RDD[Row]): List[(Int, Int)] = ???
+//    val sumByDay = data.map(row => (row.get(3).asInstanceOf[OffsetDateTime].getDayOfMonth, row.getString(0)))
+//  }
 
   /*
      * Calculate the top 25 hosts that causes error codes (Response Code=404)
      * Return a set of tuples consisting the hostnames  and the number of requests
      */
-  def top25ErrorCodeResponseHosts(data: RDD[Row]): Set[(String, Int)] = ???
+  def top25ErrorCodeResponseHosts(data: RDD[Row]): Set[(String, Int)] = {
+    data.map(row => ((row.getString(0), row.getInt(7)), 1))
+      .filter(_._1._2 == 404)
+      .reduceByKey(_ + _)
+      .takeOrdered(25)(Ordering.by(-_._2)) // - for descending ordering
+      .map(entry => (entry._1._1, entry._2))
+      .toSet
+  }
 
   /*
    * Calculate the number of error codes (Response Code=404) per day.
