@@ -202,7 +202,8 @@ object LogAnalyseFuns {
       .map(x => (x._1._1, x._2)) // (day of week, requests for that day)
       .reduceByKey((a, b) => (a._1 + b._1, a._2 + b._2)) // (day of week, (sum for this weekday, occurrences of this weekday this month))
       .mapValues(x => x._1.toDouble / x._2) // (day of week, avg requests)
-      .map(x => (x._2.toInt, x._1.toString))
+      .sortBy(entry => entry._1.getValue)
+      .map(x => (x._2.toInt, x._1.toString.toLowerCase.capitalize))
       .collect()
       .toList
   }
