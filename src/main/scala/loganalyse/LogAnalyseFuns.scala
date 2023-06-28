@@ -37,8 +37,8 @@ object LogAnalyseFuns {
    *    *
    */
   def getResponseCodesAndFrequencies(data: RDD[Row]): List[(Int, Int)] = {
-    val codes: RDD[Int] = data.map(row => row.getInt(7))
-    codes.map(x => (x, 1))
+    data.map(row => row.getInt(7))
+      .map(x => (x, 1))
       .reduceByKey((x, y) => x + y)
       .collect()
       .toList
@@ -49,14 +49,12 @@ object LogAnalyseFuns {
    * Print out the result on the console (no tests take place)
    */
   def get20HostsAccessedMoreThan10Times(data: RDD[Row]): List[String] = {
-    val hosts = data.map(row => row.getString(0))
+    data.map(row => row.getString(0))
       .map(x => (x, 1))
       .reduceByKey((x, y) => x + y)
       .filter(tuple => tuple._2 > 10)
       .map(_._1)
       .takeSample(withReplacement = false, 20).toList
-    println(hosts)
-    hosts
   }
 
   /*
@@ -124,6 +122,7 @@ object LogAnalyseFuns {
       .distinct()
       .map(x => (x._1, 1))
       .reduceByKey(_ + _)
+      .sortByKey(ascending = true)
       .collect()
       .toList
   }
@@ -132,9 +131,17 @@ object LogAnalyseFuns {
    * Calculate the average number of requests per host for each single day.
    * Order the list by the day number.
    */
-  def averageNrOfDailyRequestsPerHost(data: RDD[Row]): List[(Int, Int)] = ???
-//    val sumByDay = data.map(row => (row.get(3).asInstanceOf[OffsetDateTime].getDayOfMonth, row.getString(0)))
-//  }
+  def averageNrOfDailyRequestsPerHost(data: RDD[Row]): List[(Int, Int)] = {
+    data.map(row => ((row.get(3).asInstanceOf[OffsetDateTime].getDayOfMonth, row.getString(0)), 1))
+      .reduceByKey(_ + _)
+      .map(entry => (entry._1._1, entry._2)) // (day, sum)
+      .mapValues(x => (x,1))
+      .reduceByKey((a,b) => (a._1 + b._1, a._2 + b._2))
+      .mapValues(x => x._1 / x._2)
+      .sortByKey(ascending = true)
+      .collect()
+      .toList
+  }
 
   /*
      * Calculate the top 25 hosts that causes error codes (Response Code=404)
@@ -154,15 +161,30 @@ object LogAnalyseFuns {
    * Return a list of tuples that contain the day as the first element and the number as the second.
    * Order the list by the day number.
    */
-  def responseErrorCodesPerDay(data: RDD[Row]): List[(Int, Int)] = ???
+  def responseErrorCodesPerDay(data: RDD[Row]): List[(Int, Int)] = {
+    data.map(row => ((row.get(3).asInstanceOf[OffsetDateTime].getDayOfMonth, row.getInt(7)), 1))
+      .filter(_._1._2 == 404)
+      .reduceByKey(_ + _)
+      .map(entry => (entry._1._1, entry._2))
+      .sortByKey(ascending = true)
+      .collect()
+      .toList
+  }
 
   /*
    * Calculate the error response coded for every hour of the day.
-   * Return a list of tuples that contain the hour as the first element (0..23) abd the number of error codes as the second.
-   * Ergebnis soll eine Liste von Tupeln sein, deren erstes Element die Stunde bestimmt (0..23) und
+   * Return a list of tuples that contain the hour as the first element (0..23) and the number of error codes as the second.
    * Order the list by the hour-number.
    */
-  def errorResponseCodeByHour(data: RDD[Row]): List[(Int, Int)] = ???
+  def errorResponseCodeByHour(data: RDD[Row]): List[(Int, Int)] = {
+    data.map(row => ((row.get(3).asInstanceOf[OffsetDateTime].getHour, row.getInt(7)), 1))
+      .filter(_._1._2 == 404)
+      .reduceByKey(_ + _)
+      .map(entry => (entry._1._1, entry._2))
+      .sortByKey(ascending = true)
+      .collect()
+      .toList
+  }
 
   /*
      * Calculate the number of requests per weekday (Monday, Tuesday,...).
@@ -170,5 +192,18 @@ object LogAnalyseFuns {
      * (String) as the second.
      * The elements should have the following order: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday].
      */
-  def getAvgRequestsPerWeekDay(data: RDD[Row]): List[(Int, String)] = ???
+  def getAvgRequestsPerWeekDay(data: RDD[Row]): List[(Int, String)] = {
+    data.map(row =>
+      ((row.get(3).asInstanceOf[OffsetDateTime].getDayOfWeek,
+        row.get(3).asInstanceOf[OffsetDateTime].getDayOfMonth), // date
+        1))
+      .reduceByKey(_ + _) // count requests per day of month
+      .mapValues(x => (x, 1))
+      .map(x => (x._1._1, x._2)) // (day of week, requests for that day)
+      .reduceByKey((a, b) => (a._1 + b._1, a._2 + b._2)) // (day of week, (sum for this weekday, occurrences of this weekday this month))
+      .mapValues(x => x._1.toDouble / x._2) // (day of week, avg requests)
+      .map(x => (x._2.toInt, x._1.toString))
+      .collect()
+      .toList
+  }
 }

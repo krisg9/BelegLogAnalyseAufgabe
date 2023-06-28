@@ -122,6 +122,7 @@ class LogAnalyseFunsTest extends AnyFunSuite with BeforeAndAfterAll{
     val avgNrOfRequestPerDayAndHost= List((1, 13), (3, 12), (4, 14), (5, 12), (6, 12), (7, 13), (8, 13), (9, 14), (10, 13), (11, 14), (12, 13), (13, 13), (14, 13), (15, 13), (16, 13), 
         (17, 13), (18, 13), (19, 12), (20, 12), (21, 13), (22, 12))
     val res= LogAnalyseFuns.averageNrOfDailyRequestsPerHost(access_logs)
+    print(res)
 
     assert(avgNrOfRequestPerDayAndHost===res)
   }
